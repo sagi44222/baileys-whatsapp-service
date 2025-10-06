@@ -255,6 +255,33 @@ app.get('/qr', (req, res) => {
   }
 });
 
+// Get all WhatsApp groups
+app.get('/api/get-groups', async (req, res) => {
+  try {
+    if (!isConnected || !sock) {
+      return res.status(503).json({ error: 'WhatsApp not connected' });
+    }
+
+    const groups = await sock.groupFetchAllParticipating();
+
+    const groupList = Object.values(groups).map(group => ({
+      name: group.subject,
+      jid: group.id,
+      participants: group.participants.length,
+      created: new Date(group.creation * 1000).toISOString()
+    }));
+
+    res.json({
+      success: true,
+      count: groupList.length,
+      groups: groupList
+    });
+
+  } catch (error) {
+    logger.error('Error fetching groups:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 // Send new ride to drivers group
 app.post('/api/notify-drivers-new-ride', async (req, res) => {
   try {
