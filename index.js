@@ -20,6 +20,31 @@ let sock = null;
 let qrCodeData = null;
 let isConnected = false;
 
+const API_SECRET_KEY = process.env.API_SECRET_KEY;
+const authenticateRequest = (req, res, next) => {
+  // Get API key from header
+  const apiKey = req.headers['x-api-key'] ||
+                 req.headers['authorization']?.replace('Bearer ', '');
+
+  if (!apiKey) {
+    logger.warn(`🚫 Missing API key from ${req.ip} to ${req.path}`);
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'API key is required. Provide via X-API-Key header.'
+    });
+  }
+
+  if (apiKey !== API_SECRET_KEY) {
+    logger.warn(`🚫 Invalid API key from ${req.ip} to ${req.path}`);
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Invalid API key'
+    });
+  }
+
+  // API key is valid, continue
+  next();
+};
 // Rate limiting
 class RateLimiter {
   constructor() {
@@ -283,7 +308,7 @@ app.get('/api/get-groups', async (req, res) => {
   }
 });
 // Send new ride to drivers group
-app.post('/api/notify-drivers-new-ride', async (req, res) => {
+app.post('/api/notify-drivers-new-ride',authenticateRequest, async (req, res) => {
   try {
     if (!isConnected) {
       return res.status(503).json({ error: 'WhatsApp not connected' });
@@ -309,7 +334,7 @@ app.post('/api/notify-drivers-new-ride', async (req, res) => {
 });
 
 // Send ride taken update to group
-app.post('/api/notify-drivers-ride-taken', async (req, res) => {
+app.post('/api/notify-drivers-ride-taken',authenticateRequest, async (req, res) => {
   try {
     if (!isConnected) {
       return res.status(503).json({ error: 'WhatsApp not connected' });
@@ -335,7 +360,7 @@ app.post('/api/notify-drivers-ride-taken', async (req, res) => {
 });
 
 // Send individual message (confirmations, reminders, etc)
-app.post('/api/send-individual', async (req, res) => {
+app.post('/api/send-individual',authenticateRequest, async (req, res) => {
   try {
     if (!isConnected) {
       return res.status(503).json({ error: 'WhatsApp not connected' });
@@ -362,7 +387,7 @@ app.post('/api/send-individual', async (req, res) => {
 });
 
 // Send reminder
-app.post('/api/send-reminder', async (req, res) => {
+app.post('/api/send-reminder',authenticateRequest, async (req, res) => {
   try {
     if (!isConnected) {
       return res.status(503).json({ error: 'WhatsApp not connected' });
@@ -400,6 +425,15 @@ app.get('/api/status', (req, res) => {
 // Start server
 app.listen(PORT, async () => {
   logger.info(`🚀 Baileys service running on port ${PORT}`);
+
+  // Check if API key is configured
+  if (!API_SECRET_KEY) {
+    logger.error('❌❌❌ WARNING: API_SECRET_KEY not set! Service is UNPROTECTED! ❌❌❌');
+    logger.error('Set API_SECRET_KEY environment variable immediately!');
+  } else {
+    logger.info('🔒 API authentication enabled');
+  }
+
   logger.info('Connecting to WhatsApp...');
   await connectToWhatsApp();
 });
