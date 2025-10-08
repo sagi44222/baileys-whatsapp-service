@@ -35,9 +35,6 @@ app.use('/api/', apiLimiter);
 // Logger
 const logger = P({ level: 'info' });
 
-// Logger
-const logger = P({ level: 'info' });
-
 // WhatsApp Socket
 let sock = null;
 let qrCodeData = null;
