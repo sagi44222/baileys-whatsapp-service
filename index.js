@@ -12,6 +12,29 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cors());
 
+const rateLimit = require('express-rate-limit');
+
+// Create rate limiter: 100 requests per 15 minutes per IP
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Max 100 requests per window per IP
+  message: {
+    error: 'Too many requests from this IP',
+    message: 'Please try again in 15 minutes'
+  },
+  standardHeaders: true, // Return rate limit info in headers
+  legacyHeaders: false,
+  // Skip limiting for health checks
+  skip: (req) => req.path === '/health'
+});
+
+// Apply rate limiter to all /api routes
+app.use('/api/', apiLimiter);
+// ===== END NEW SECTION =====
+
+// Logger
+const logger = P({ level: 'info' });
+
 // Logger
 const logger = P({ level: 'info' });
 
